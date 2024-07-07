@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "videoconferencia-pubsub"
+version = "0.1.0"
+description = ""
+authors = ["André Silveira <andresilveira027@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+opencv-python = "^4.10.0.84"
+pyaudio = "^0.2.14"
+pyzmq = "^26.0.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
