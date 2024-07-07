@@ -1,30 +1,37 @@
+import threading
+
 import zmq
 
-def main():
+
+def broker():
     context = zmq.Context()
-    
+
+    router = context.socket(zmq.ROUTER)
+    router.bind('tcp://*:5555')
+
     # Criar sockets PUB para vídeo, áudio e texto
-    video_socket = context.socket(zmq.PUB)
-    audio_socket = context.socket(zmq.PUB)
-    text_socket = context.socket(zmq.PUB)
-    
-    video_socket.bind("tcp://*:5555")
-    audio_socket.bind("tcp://*:5556")
-    text_socket.bind("tcp://*:5557")
-    
-    print("Broker está rodando...")
-    
+    pub = context.socket(zmq.PUB)
+    pub.bind('tcp://*:5556')
+
+    print('Broker está rodando...')
+
     try:
         while True:
-            # O broker não faz nada além de rodar os sockets PUB
-            pass
+            # O broker recebe mensagens dos clientes
+            frame = router.recv_multipart()
+            message = f'{frame[1].decode()}: {frame[2].decode()}'.encode()
+
+            # O broker repassa as mensagens para todos os inscritos
+            pub.send(message)
     except KeyboardInterrupt:
-        print("Broker encerrado.")
+        print('Broker encerrado.')
     finally:
-        video_socket.close()
-        audio_socket.close()
-        text_socket.close()
+        pub.close()
+        router.close()
         context.term()
 
-if __name__ == "__main__":
-    main()
+
+if __name__ == '__main__':
+    broker_thread = threading.Thread(target=broker)
+    broker_thread.start()
+    broker_thread.join()

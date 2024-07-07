@@ -1,24 +1,49 @@
-from video import VideoClient
-from audio import AudioClient
-from text import TextClient
+import argparse
 import threading
+import time
 
-def main():
-    video_client = VideoClient("tcp://localhost:5555")
-    audio_client = AudioClient("tcp://localhost:5556")
-    text_client = TextClient("tcp://localhost:5557")
-    
-    video_thread = threading.Thread(target=video_client.run)
-    audio_thread = threading.Thread(target=audio_client.run)
-    text_thread = threading.Thread(target=text_client.run)
-    
-    video_thread.start()
-    audio_thread.start()
-    text_thread.start()
-    
-    video_thread.join()
-    audio_thread.join()
-    text_thread.join()
+import zmq
 
-if __name__ == "__main__":
-    main()
+parser = argparse.ArgumentParser(description='Cliente para videoconferencia')
+parser.add_argument('--id', type=int, help='ID do cliente')
+
+
+def publish(context: zmq.Context, client_id: int):
+    dealer = context.socket(zmq.DEALER)
+    dealer.connect('tcp://localhost:5555')
+
+    while True:
+        dealer.send_multipart([client_id, b'audio message'])
+        dealer.send_multipart([client_id, b'video message'])
+        dealer.send_multipart([client_id, b'text message'])
+        time.sleep(1)
+
+
+def subscribe(context: zmq.Context):
+    sub = context.socket(zmq.SUB)
+    sub.connect('tcp://localhost:5556')
+
+    # Inscrito em todos os canais
+    sub.setsockopt_string(zmq.SUBSCRIBE, '')
+
+    while True:
+        message = sub.recv_string()
+        print(message)
+
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    client_id = f'client{args.id}'.encode()
+    context = zmq.Context()
+
+    # Threads
+    pub_thread = threading.Thread(target=publish, args=(context, client_id))
+    sub_thread = threading.Thread(target=subscribe, args=(context,))
+
+    pub_thread.start()
+    sub_thread.start()
+
+    pub_thread.join()
+    sub_thread.join()
+
+    context.term()
